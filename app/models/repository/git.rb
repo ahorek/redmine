@@ -19,7 +19,7 @@
 require 'redmine/scm/adapters/git_adapter'
 
 class Repository::Git < Repository
-  attr_protected :root_url
+  #attr_protected :root_url
   validates_presence_of :url
 
   safe_attributes 'report_last_commit'
@@ -46,7 +46,7 @@ class Repository::Git < Repository
     return false if v.nil?
     v.to_s != '0'
   end
- 
+
   def report_last_commit=(arg)
     merge_extra_info "extra_report_last_commit" => arg
   end

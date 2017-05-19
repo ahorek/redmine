@@ -59,9 +59,9 @@ class Issue < ActiveRecord::Base
   delegate :notes, :notes=, :private_notes, :private_notes=, :to => :current_journal, :allow_nil => true
 
   validates_presence_of :subject, :project, :tracker
-  validates_presence_of :priority, :if => Proc.new {|issue| issue.new_record? || issue.priority_id_changed?}
-  validates_presence_of :status, :if => Proc.new {|issue| issue.new_record? || issue.status_id_changed?}
-  validates_presence_of :author, :if => Proc.new {|issue| issue.new_record? || issue.author_id_changed?}
+  validates_presence_of :priority, :if => Proc.new {|issue| issue.new_record? || issue.saved_change_to_priority_id?}
+  validates_presence_of :status, :if => Proc.new {|issue| issue.new_record? || issue.saved_change_to_status_id?}
+  validates_presence_of :author, :if => Proc.new {|issue| issue.new_record? || issue.saved_change_to_author_id?}
 
   validates_length_of :subject, :maximum => 255
   validates_inclusion_of :done_ratio, :in => 0..100
@@ -69,7 +69,7 @@ class Issue < ActiveRecord::Base
   validates :start_date, :date => true
   validates :due_date, :date => true
   validate :validate_issue, :validate_required_fields
-  attr_protected :id
+  #attr_protected :id
 
   scope :visible, lambda {|*args|
     joins(:project).
@@ -109,7 +109,7 @@ class Issue < ActiveRecord::Base
   before_create :default_assign
   before_save :close_duplicates, :update_done_ratio_from_issue_status,
               :force_updated_on_change, :update_closed_on, :set_assigned_to_was
-  after_save {|issue| issue.send :after_project_change if !issue.id_changed? && issue.project_id_changed?}
+  after_save {|issue| issue.send :after_project_change if !issue.saved_change_to_id? && issue.saved_change_to_project_id?}
   after_save :reschedule_following_issues, :update_nested_set_attributes,
              :update_parent_attributes, :delete_selected_attachments, :create_journal
   # Should be after_create but would be called before previous after_save callbacks
@@ -208,8 +208,8 @@ class Issue < ActiveRecord::Base
     end
   end
 
-  def create_or_update
-    super
+  def create_or_update(*args, &block)
+    super(*args, &block)
   ensure
     @status_was = nil
   end
@@ -527,7 +527,7 @@ class Issue < ActiveRecord::Base
         self.project_id = p_id
       end
 
-      if project_id_changed? && attrs['category_id'].to_s == category_id_was.to_s
+      if saved_change_to_project_id? && attrs['category_id'].to_s == category_id_before_last_save.to_s
         # Discard submitted category on previous project
         attrs.delete('category_id')
       end
@@ -586,7 +586,7 @@ class Issue < ActiveRecord::Base
     end
 
     # mass-assignment security bypass
-    assign_attributes attrs, :without_protection => true
+    assign_attributes attrs#, :without_protection => true
   end
 
   def disabled_core_fields
@@ -701,11 +701,11 @@ class Issue < ActiveRecord::Base
   end
 
   def validate_issue
-    if due_date && start_date && (start_date_changed? || due_date_changed?) && due_date < start_date
+    if due_date && start_date && (saved_change_to_start_date? || saved_change_to_due_date?) && due_date < start_date
       errors.add :due_date, :greater_than_start_date
     end
 
-    if start_date && start_date_changed? && soonest_start && start_date < soonest_start
+    if start_date && saved_change_to_start_date? && soonest_start && start_date < soonest_start
       errors.add :start_date, :earlier_than_minimum_start_date, :date => format_date(soonest_start)
     end
 
@@ -718,13 +718,13 @@ class Issue < ActiveRecord::Base
     end
 
     # Checks that the issue can not be added/moved to a disabled tracker
-    if project && (tracker_id_changed? || project_id_changed?)
+    if project && (saved_change_to_tracker_id? || saved_change_to_project_id?)
       if tracker && !project.trackers.include?(tracker)
         errors.add :tracker_id, :inclusion
       end
     end
 
-    if assigned_to_id_changed? && assigned_to_id.present?
+    if saved_change_to_assigned_to_id? && assigned_to_id.present?
       unless assignable_users.include?(assigned_to)
         errors.add :assigned_to_id, :invalid
       end
@@ -854,9 +854,9 @@ class Issue < ActiveRecord::Base
   # Returns the initial status of the issue
   # Returns nil for a new issue
   def status_was
-    if status_id_changed?
-      if status_id_was.to_i > 0
-        @status_was ||= IssueStatus.find_by_id(status_id_was)
+    if saved_change_to_status_id?
+      if status_id_before_last_save.to_i > 0
+        @status_was ||= IssueStatus.find_by_id(status_id_before_last_save)
       end
     else
       @status_was ||= status
@@ -870,7 +870,7 @@ class Issue < ActiveRecord::Base
 
   # Returns true if the issue was closed when loaded
   def was_closed?
-    status_was.present? && status_was.is_closed?
+    status_before_last_save.present? && status_before_last_save.is_closed?
   end
 
   # Return true if the issue is being reopened
@@ -878,7 +878,7 @@ class Issue < ActiveRecord::Base
     if new_record?
       false
     else
-      status_id_changed? && !closed? && was_closed?
+      saved_change_to_status_id? && !closed? && was_closed?
     end
   end
   alias :reopened? :reopening?
@@ -888,7 +888,7 @@ class Issue < ActiveRecord::Base
     if new_record?
       closed?
     else
-      status_id_changed? && closed? && !was_closed?
+      saved_change_to_status_id? && closed? && !was_closed?
     end
   end
 
@@ -913,7 +913,7 @@ class Issue < ActiveRecord::Base
   def assignable_users
     users = project.assignable_users(tracker).to_a
     users << author if author && author.active?
-    if assigned_to_id_was.present? && assignee = Principal.find_by_id(assigned_to_id_was)
+    if assigned_to_id_before_last_save.present? && assignee = Principal.find_by_id(assigned_to_id_before_last_save)
       users << assignee
     end
     users.uniq.sort
@@ -925,9 +925,9 @@ class Issue < ActiveRecord::Base
 
     versions = project.shared_versions.open.to_a
     if fixed_version
-      if fixed_version_id_changed?
+      if saved_change_to_fixed_version_id?
         # nothing to do
-      elsif project_id_changed?
+      elsif saved_change_to_project_id?
         if project.shared_versions.include?(fixed_version)
           versions << fixed_version
         end
@@ -954,19 +954,19 @@ class Issue < ActiveRecord::Base
     initial_status = nil
     if new_record?
       # nop
-    elsif tracker_id_changed?
-      if Tracker.where(:id => tracker_id_was, :default_status_id => status_id_was).any?
+    elsif saved_change_to_tracker_id?
+      if Tracker.where(:id => tracker_id_before_last_save, :default_status_id => status_id_before_last_save).any?
         initial_status = default_status
-      elsif tracker.issue_status_ids.include?(status_id_was)
-        initial_status = IssueStatus.find_by_id(status_id_was)
+      elsif tracker.issue_status_ids.include?(status_id_before_last_save)
+        initial_status = IssueStatus.find_by_id(status_id_before_last_save)
       else
         initial_status = default_status
       end
     else
-      initial_status = status_was
+      initial_status = status_before_last_save
     end
 
-    initial_assigned_to_id = assigned_to_id_changed? ? assigned_to_id_was : assigned_to_id
+    initial_assigned_to_id = saved_change_to_assigned_to_id? ? assigned_to_id_before_last_save : assigned_to_id
     assignee_transitions_allowed = initial_assigned_to_id.present? &&
       (user.id == initial_assigned_to_id || user.group_ids.include?(initial_assigned_to_id))
 
@@ -996,7 +996,7 @@ class Issue < ActiveRecord::Base
   # Returns the previous assignee (user or group) if changed
   def assigned_to_was
     # assigned_to_id_was is reset before after_save callbacks
-    user_id = @previous_assigned_to_id || assigned_to_id_was
+    user_id = @previous_assigned_to_id || assigned_to_id_before_last_save
     if user_id && user_id != assigned_to_id
       @assigned_to_was ||= Principal.find_by_id(user_id)
     end
@@ -1004,7 +1004,7 @@ class Issue < ActiveRecord::Base
 
   # Returns the original tracker
   def tracker_was
-    Tracker.find_by_id(tracker_id_was)
+    Tracker.find_by_id(tracker_id_before_last_save)
   end
 
   # Returns the users that should be notified
@@ -1522,7 +1522,7 @@ class Issue < ActiveRecord::Base
 
   # Returns a scope of trackers that user can assign the issue to
   def allowed_target_trackers(user=User.current)
-    self.class.allowed_target_trackers(project, user, tracker_id_was)
+    self.class.allowed_target_trackers(project, user, tracker_id_before_last_save)
   end
 
   # Returns a scope of trackers that user can assign project issues to
@@ -1573,7 +1573,7 @@ class Issue < ActiveRecord::Base
 
     # Move subtasks that were in the same project
     children.each do |child|
-      next unless child.project_id == project_id_was
+      next unless child.project_id == project_id_before_last_save
       # Change project and keep project
       child.send :project=, project, true
       unless child.save
@@ -1630,7 +1630,7 @@ class Issue < ActiveRecord::Base
   end
 
   def update_nested_set_attributes
-    if parent_id_changed?
+    if saved_change_to_parent_id?
       update_nested_set_attributes_on_parent_change
     end
     remove_instance_variable(:@parent_issue) if instance_variable_defined?(:@parent_issue)
@@ -1638,7 +1638,7 @@ class Issue < ActiveRecord::Base
 
   # Updates the nested set for when an existing issue is moved
   def update_nested_set_attributes_on_parent_change
-    former_parent_id = parent_id_was
+    former_parent_id = parent_id_before_last_save
     # delete invalid relations of all descendants
     self_and_descendants.each do |issue|
       issue.relations.each do |relation|
@@ -1775,7 +1775,7 @@ class Issue < ActiveRecord::Base
 
   # Updates start/due dates of following issues
   def reschedule_following_issues
-    if start_date_changed? || due_date_changed?
+    if saved_change_to_start_date? || saved_change_to_due_date?
       relations_from.each do |relation|
         relation.set_issue_to_dates
       end
@@ -1837,7 +1837,7 @@ class Issue < ActiveRecord::Base
   # Stores the previous assignee so we can still have access
   # to it during after_save callbacks (assigned_to_id_was is reset)
   def set_assigned_to_was
-    @previous_assigned_to_id = assigned_to_id_was
+    @previous_assigned_to_id = assigned_to_id_before_last_save
   end
 
   # Clears the previous assignee at the end of after_save callbacks

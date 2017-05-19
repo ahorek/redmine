@@ -197,7 +197,7 @@ class Principal < ActiveRecord::Base
   end
 
   def validate_status
-    if status_changed? && self.class.valid_statuses.present?
+    if saved_change_to_status? && self.class.valid_statuses.present?
       unless self.class.valid_statuses.include?(status)
         errors.add :status, :invalid
       end

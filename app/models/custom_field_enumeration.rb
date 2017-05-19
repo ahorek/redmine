@@ -19,7 +19,7 @@ class CustomFieldEnumeration < ActiveRecord::Base
   include Redmine::SafeAttributes
 
   belongs_to :custom_field
-  attr_accessible :name, :active, :position
+  #attr_accessible :name, :active, :position
 
   validates_presence_of :name, :position, :custom_field_id
   validates_length_of :name, :maximum => 60

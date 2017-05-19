@@ -47,12 +47,23 @@ module RedmineApp
     # Do not include all helpers
     config.action_controller.include_all_helpers = false
 
+    config.assets.enabled = true
+    config.assets.compile = true
+    config.assets.digest = true
+    # config.assets.debug = true
+    config.assets.compress = true
+    config.assets.js_compressor = :uglifier
+    config.assets.css_compressor = :sass
+
+    config.assets.paths += ["public/stylesheets", "public/javascripts"]
+    config.assets.precompile += ["*.css", "*.js", "*.scss"]
+
     # Do not suppress errors in after_rollback and after_commit callbacks
-    config.active_record.raise_in_transactional_callbacks = true
+    #config.active_record.raise_in_transactional_callbacks = true
 
     # XML parameter parser removed from core in Rails 4.0
     # and extracted to actionpack-xml_parser gem
-    config.middleware.insert_after ActionDispatch::ParamsParser, ActionDispatch::XmlParamsParser
+    #config.middleware.insert_after ActionDispatch::ParamsParser, ActionDispatch::XmlParamsParser
 
     # Sets the Content-Length header on responses with fixed-length bodies
     config.middleware.insert_after Rack::Sendfile, Rack::ContentLength

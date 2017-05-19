@@ -45,7 +45,7 @@ end
 class ActiveSupport::TestCase
   include ActionDispatch::TestProcess
 
-  self.use_transactional_fixtures = true
+  self.use_transactional_tests = true
   self.use_instantiated_fixtures  = false
 
   def uploaded_test_file(name, mime)
@@ -248,14 +248,14 @@ end
 module Redmine
   class MockFile
     attr_reader :size, :original_filename, :content_type
-  
+
     def initialize(options={})
       @size = options[:size] || 32
       @original_filename = options[:original_filename] || options[:filename]
       @content_type = options[:content_type]
       @content = options[:content] || 'x'*size
     end
-  
+
     def read(*args)
       if @eof
         false
@@ -302,17 +302,17 @@ module Redmine
       ids = css_select('tr.issue td.id').map(&:text).map(&:to_i)
       Issue.where(:id => ids).sort_by {|issue| ids.index(issue.id)}
     end
-  
+
     # Return the columns that are displayed in the list
     def columns_in_issues_list
       css_select('table.issues thead th:not(.checkbox)').map(&:text)
     end
-  
+
     # Verifies that the query filters match the expected filters
     def assert_query_filters(expected_filters)
       response.body =~ /initFilters\(\);\s*((addFilter\(.+\);\s*)*)/
       filter_init = $1.to_s
-  
+
       expected_filters.each do |field, operator, values|
         s = "addFilter(#{field.to_json}, #{operator.to_json}, #{Array(values).to_json});"
         assert_include s, filter_init
@@ -320,14 +320,23 @@ module Redmine
       assert_equal expected_filters.size, filter_init.scan("addFilter").size, "filters counts don't match"
     end
 
-    def process(method, path, parameters={}, session={}, flash={})
-      if parameters.key?(:params) || parameters.key?(:session)
+    def process(action, method: "GET", params: {}, session: nil, body: nil, flash: {}, format: nil, xhr: false, as: nil)
+      if params.key?(:session)
         raise ArgumentError if session.present?
-        super method, path, parameters[:params], parameters[:session], parameters.except(:params, :session)
+        super action, method, params.except(:session), session, body, flash, format, xhr, as
       else
         super
       end
     end
+
+#    def process(method, path, parameters={}, session={}, flash={})
+#      if parameters.key?(:params) || parameters.key?(:session)
+#        raise ArgumentError if session.present?
+#        super method, path, parameters[:params], parameters[:session], parameters.except(:params, :session)
+#      else
+#        super
+#      end
+#    end
   end
 
   class IntegrationTest < ActionDispatch::IntegrationTest
@@ -405,7 +414,7 @@ module Redmine
         request = arg.keys.detect {|key| key.is_a?(String)}
         raise ArgumentError unless request
         options = arg.slice!(request)
-  
+
         API_FORMATS.each do |format|
           format_request = request.sub /$/, ".#{format}"
           super options.merge(format_request => arg[request], :format => format)

@@ -4,20 +4,18 @@ if Gem::Version.new(Bundler::VERSION) < Gem::Version.new('1.5.0')
   abort "Redmine requires Bundler 1.5.0 or higher (you're using #{Bundler::VERSION}).\nPlease update with 'gem update bundler'."
 end
 
-gem "rails", "4.2.8"
-gem "addressable", "2.4.0" if RUBY_VERSION < "2.0"
-gem "jquery-rails", "~> 3.1.4"
+gem "rails", "5.1.1"
+gem "jquery-rails", "4.3.1"
 gem "coderay", "~> 1.1.1"
 gem "request_store", "1.0.5"
-gem "mime-types", (RUBY_VERSION >= "2.0" ? "~> 3.0" : "~> 2.99")
-gem "protected_attributes"
+gem "mime-types"
+#gem "protected_attributes"
 gem "actionpack-xml_parser"
-gem "roadie-rails", "~> 1.1.1"
+gem "roadie-rails"
 gem "mimemagic"
 
-gem "nokogiri", (RUBY_VERSION >= "2.1" ? ">= 1.7.0" : "~> 1.6.8")
+gem "nokogiri"
 gem "i18n", "~> 0.7.0"
-gem "ffi", "1.9.14", :platforms => :mingw if RUBY_VERSION < "2.0"
 
 # Request at least rails-html-sanitizer 1.0.3 because of security advisories
 gem "rails-html-sanitizer", ">= 1.0.3"
@@ -35,6 +33,12 @@ end
 group :openid do
   gem "ruby-openid", "~> 2.3.0", :require => "openid"
   gem "rack-openid"
+end
+
+group :assets do
+  gem 'sprockets-rails'
+  gem 'uglifier'
+  gem 'sass-rails'
 end
 
 platforms :mri, :mingw, :x64_mingw do
@@ -61,9 +65,9 @@ if File.exist?(database_file)
     adapters.each do |adapter|
       case adapter
       when 'mysql2'
-        gem "mysql2", "~> 0.4.6", :platforms => [:mri, :mingw, :x64_mingw]
+        gem "mysql2", :platforms => [:mri, :mingw, :x64_mingw]
       when /postgresql/
-        gem "pg", "~> 0.18.1", :platforms => [:mri, :mingw, :x64_mingw]
+        gem "pg", :platforms => [:mri, :mingw, :x64_mingw]
       when /sqlite3/
         gem "sqlite3", (RUBY_VERSION < "2.0" && RUBY_PLATFORM =~ /mingw/ ? "1.3.12" : "~>1.3.12"),
                        :platforms => [:mri, :mingw, :x64_mingw]

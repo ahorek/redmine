@@ -212,7 +212,7 @@ class Query < ActiveRecord::Base
   serialize :sort_criteria, Array
   serialize :options, Hash
 
-  attr_protected :project_id, :user_id
+  #attr_protected :project_id, :user_id
 
   validates_presence_of :name
   validates_length_of :name, :maximum => 255
@@ -223,7 +223,7 @@ class Query < ActiveRecord::Base
   end
 
   after_save do |query|
-    if query.visibility_changed? && query.visibility != VISIBILITY_ROLES
+    if query.saved_change_to_visibility? && query.visibility != VISIBILITY_ROLES
       query.roles.clear
     end
   end

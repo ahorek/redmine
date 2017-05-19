@@ -1386,7 +1386,7 @@ class IssueTest < ActiveSupport::TestCase
 
   def test_adding_journal_should_update_timestamp
     issue = Issue.find(1)
-    updated_on_was = issue.updated_on
+    updated_on_before_last_save = issue.updated_on
 
     issue.init_journal(User.first, "Adding notes")
     assert_difference 'Journal.count' do
@@ -1394,7 +1394,7 @@ class IssueTest < ActiveSupport::TestCase
     end
     issue.reload
 
-    assert_not_equal updated_on_was, issue.updated_on
+    assert_not_equal updated_on_before_last_save, issue.updated_on
   end
 
   def test_should_close_duplicates
@@ -2861,28 +2861,28 @@ class IssueTest < ActiveSupport::TestCase
 
   def test_status_was_should_return_nil_for_new_issue
     issue = Issue.new
-    assert_nil issue.status_was
+    assert_nil issue.status_before_last_save
   end
 
   def test_status_was_should_return_status_before_change
     issue = Issue.find(1)
     issue.status = IssueStatus.find(2)
-    assert_equal IssueStatus.find(1), issue.status_was
+    assert_equal IssueStatus.find(1), issue.status_before_last_save
   end
 
   def test_status_was_should_return_status_before_change_with_status_id
     issue = Issue.find(1)
     assert_equal IssueStatus.find(1), issue.status
     issue.status_id = 2
-    assert_equal IssueStatus.find(1), issue.status_was
+    assert_equal IssueStatus.find(1), issue.status_before_last_save
   end
 
   def test_status_was_should_be_reset_on_save
     issue = Issue.find(1)
     issue.status = IssueStatus.find(2)
-    assert_equal IssueStatus.find(1), issue.status_was
+    assert_equal IssueStatus.find(1), issue.status_before_last_save
     assert issue.save!
-    assert_equal IssueStatus.find(2), issue.status_was
+    assert_equal IssueStatus.find(2), issue.status_before_last_save
   end
 
   def test_closing_should_return_true_when_closing_an_issue

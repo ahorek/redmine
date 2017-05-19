@@ -76,20 +76,20 @@ class Role < ActiveRecord::Base
 
   serialize :permissions, ::Role::PermissionsAttributeCoder
   store :settings, :accessors => [:permissions_all_trackers, :permissions_tracker_ids]
-  attr_protected :builtin
+  #attr_protected :builtin
 
   validates_presence_of :name
   validates_uniqueness_of :name
   validates_length_of :name, :maximum => 30
   validates_inclusion_of :issues_visibility,
     :in => ISSUES_VISIBILITY_OPTIONS.collect(&:first),
-    :if => lambda {|role| role.respond_to?(:issues_visibility) && role.issues_visibility_changed?}
+    :if => lambda {|role| role.respond_to?(:issues_visibility) && role.saved_change_to_issues_visibility? }
   validates_inclusion_of :users_visibility,
     :in => USERS_VISIBILITY_OPTIONS.collect(&:first),
-    :if => lambda {|role| role.respond_to?(:users_visibility) && role.users_visibility_changed?}
+    :if => lambda {|role| role.respond_to?(:users_visibility) && role.saved_change_to_users_visibility? }
   validates_inclusion_of :time_entries_visibility,
     :in => TIME_ENTRIES_VISIBILITY_OPTIONS.collect(&:first),
-    :if => lambda {|role| role.respond_to?(:time_entries_visibility) && role.time_entries_visibility_changed?}
+    :if => lambda {|role| role.respond_to?(:time_entries_visibility) && role.saved_change_to_time_entries_visibility?}
 
   safe_attributes 'name',
       'assignable',

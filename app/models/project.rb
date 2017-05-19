@@ -67,22 +67,22 @@ class Project < ActiveRecord::Base
                 :url => Proc.new {|o| {:controller => 'projects', :action => 'show', :id => o}},
                 :author => nil
 
-  attr_protected :status
+  #attr_protected :status
 
   validates_presence_of :name, :identifier
-  validates_uniqueness_of :identifier, :if => Proc.new {|p| p.identifier_changed?}
+  validates_uniqueness_of :identifier, :if => Proc.new {|p| p.saved_change_to_identifier?}
   validates_length_of :name, :maximum => 255
   validates_length_of :homepage, :maximum => 255
   validates_length_of :identifier, :maximum => IDENTIFIER_MAX_LENGTH
   # downcase letters, digits, dashes but not digits only
-  validates_format_of :identifier, :with => /\A(?!\d+$)[a-z0-9\-_]*\z/, :if => Proc.new { |p| p.identifier_changed? }
+  validates_format_of :identifier, :with => /\A(?!\d+$)[a-z0-9\-_]*\z/, :if => Proc.new { |p| p.saved_change_to_identifier? }
   # reserved words
   validates_exclusion_of :identifier, :in => %w( new )
   validate :validate_parent
 
-  after_save :update_inherited_members, :if => Proc.new {|project| project.inherit_members_changed?}
-  after_save :remove_inherited_member_roles, :add_inherited_member_roles, :if => Proc.new {|project| project.parent_id_changed?}
-  after_update :update_versions_from_hierarchy_change, :if => Proc.new {|project| project.parent_id_changed?}
+  after_save :update_inherited_members, :if => Proc.new {|project| project.saved_change_to_inherit_members?}
+  after_save :remove_inherited_member_roles, :add_inherited_member_roles, :if => Proc.new {|project| project.saved_change_to_parent_id?}
+  after_update :update_versions_from_hierarchy_change, :if => Proc.new {|project| project.saved_change_to_parent_id?}
   before_destroy :delete_all_members
 
   scope :has_module, lambda {|mod|
@@ -860,10 +860,10 @@ class Project < ActiveRecord::Base
 
   def update_inherited_members
     if parent
-      if inherit_members? && !inherit_members_was
+      if inherit_members? && !inherit_members_before_last_save
         remove_inherited_member_roles
         add_inherited_member_roles
-      elsif !inherit_members? && inherit_members_was
+      elsif !inherit_members? && inherit_members_before_last_save
         remove_inherited_member_roles
       end
     end
@@ -899,7 +899,7 @@ class Project < ActiveRecord::Base
   def validate_parent
     if @unallowed_parent_id
       errors.add(:parent_id, :invalid)
-    elsif parent_id_changed?
+    elsif saved_change_to_parent_id?
       unless parent.nil? || (parent.active? && move_possible?(parent))
         errors.add(:parent_id, :invalid)
       end

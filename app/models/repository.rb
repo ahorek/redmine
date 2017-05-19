@@ -48,7 +48,7 @@ class Repository < ActiveRecord::Base
   # Checks if the SCM is enabled when creating a repository
   validate :repo_create_validation, :on => :create
   validate :validate_repository_path
-  attr_protected :id
+  #attr_protected :id
 
   safe_attributes 'identifier',
     'login',
@@ -484,7 +484,7 @@ class Repository < ActiveRecord::Base
     if !is_default? && set_as_default?
       self.is_default = true
     end
-    if is_default? && is_default_changed?
+    if is_default? && saved_change_to_is_default?
       Repository.where(["project_id = ?", project_id]).update_all(["is_default = ?", false])
     end
   end

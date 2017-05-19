@@ -28,7 +28,7 @@ class Board < ActiveRecord::Base
   validates_length_of :name, :maximum => 30
   validates_length_of :description, :maximum => 255
   validate :validate_board
-  attr_protected :id
+  #attr_protected :id
 
   scope :visible, lambda {|*args|
     joins(:project).
@@ -89,7 +89,7 @@ class Board < ActiveRecord::Base
   protected
 
   def validate_board
-    if parent_id && parent_id_changed?
+    if parent_id && saved_change_to_parent_id?
       errors.add(:parent_id, :invalid) unless valid_parents.include?(parent)
     end
   end

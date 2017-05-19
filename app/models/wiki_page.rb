@@ -47,7 +47,7 @@ class WikiPage < ActiveRecord::Base
   validates_uniqueness_of :title, :scope => :wiki_id, :case_sensitive => false
   validates_length_of :title, maximum: 255
   validates_associated :content
-  attr_protected :id
+  #attr_protected :id
 
   validate :validate_parent_title
   before_destroy :delete_redirects
@@ -95,9 +95,9 @@ class WikiPage < ActiveRecord::Base
 
   # Manages redirects if page is renamed or moved
   def handle_rename_or_move
-    if !new_record? && (title_changed? || wiki_id_changed?)
+    if !new_record? && (saved_change_to_title? || saved_change_to_wiki_id?)
       # Update redirects that point to the old title
-      WikiRedirect.where(:redirects_to => title_was, :redirects_to_wiki_id => wiki_id_was).each do |r|
+      WikiRedirect.where(:redirects_to => title_before_last_save, :redirects_to_wiki_id => wiki_id_before_last_save).each do |r|
         r.redirects_to = title
         r.redirects_to_wiki_id = wiki_id
         (r.title == r.redirects_to && r.wiki_id == r.redirects_to_wiki_id) ? r.destroy : r.save
@@ -107,12 +107,12 @@ class WikiPage < ActiveRecord::Base
       # Create a redirect to the new title
       unless redirect_existing_links == "0"
         WikiRedirect.create(
-          :wiki_id => wiki_id_was, :title => title_was,
+          :wiki_id => wiki_id_before_last_save, :title => title_before_last_save,
           :redirects_to_wiki_id => wiki_id, :redirects_to => title
         )
       end
     end
-    if !new_record? && wiki_id_changed? && parent.present?
+    if !new_record? && saved_change_to_wiki_id? && parent.present?
       unless parent.wiki_id == wiki_id
         self.parent_id = nil
       end
@@ -122,7 +122,7 @@ class WikiPage < ActiveRecord::Base
 
   # Moves child pages if page was moved
   def handle_children_move
-    if !new_record? && wiki_id_changed?
+    if !new_record? && saved_change_to_wiki_id?
       children.each do |child|
         child.wiki_id = wiki_id
         child.redirect_existing_links = redirect_existing_links
@@ -215,7 +215,7 @@ class WikiPage < ActiveRecord::Base
     ret = nil
     transaction do
       ret = save
-      if content.text_changed?
+      if content.saved_change_to_text?
         begin
           self.content = content
           ret = ret && content.changed?
@@ -233,7 +233,7 @@ class WikiPage < ActiveRecord::Base
   def validate_parent_title
     errors.add(:parent_title, :invalid) if !@parent_title.blank? && parent.nil?
     errors.add(:parent_title, :circular_dependency) if parent && (parent == self || parent.ancestors.include?(self))
-    if parent_id_changed? && parent && (parent.wiki_id != wiki_id)
+    if saved_change_to_parent_id? && parent && (parent.wiki_id != wiki_id)
       errors.add(:parent_title, :not_same_project)
     end
   end

@@ -21,7 +21,7 @@ class UserPreference < ActiveRecord::Base
   belongs_to :user
   serialize :others
 
-  attr_protected :others, :user_id
+  #attr_protected :others, :user_id
 
   before_save :set_others_hash, :clear_unused_block_settings
 

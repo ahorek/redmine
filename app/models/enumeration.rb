@@ -29,7 +29,7 @@ class Enumeration < ActiveRecord::Base
   before_destroy :check_integrity
   before_save    :check_default
 
-  attr_protected :type
+  #attr_protected :type
 
   validates_presence_of :name
   validates_uniqueness_of :name, :scope => [:type, :project_id]
@@ -59,7 +59,7 @@ class Enumeration < ActiveRecord::Base
   end
 
   def check_default
-    if is_default? && is_default_changed?
+    if is_default? && saved_change_to_is_default?
       Enumeration.where({:type => type}).update_all({:is_default => false})
     end
   end
@@ -148,7 +148,7 @@ class Enumeration < ActiveRecord::Base
   # position as the overridden enumeration
   def update_position
     super
-    if position_changed?
+    if saved_change_to_position?
       self.class.where.not(:parent_id => nil).update_all(
         "position = coalesce((
           select position

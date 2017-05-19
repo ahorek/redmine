@@ -224,7 +224,7 @@ module ApplicationHelper
       image_tag(
         thumbnail_path(attachment),
         :srcset => "#{thumbnail_path(attachment, :size => Setting.thumbnails_size.to_i * 2)} 2x",
-        :width => Setting.thumbnails_size 
+        :width => Setting.thumbnails_size
       ),
       named_attachment_path(
         attachment,
@@ -1311,20 +1311,22 @@ module ApplicationHelper
   #   stylesheet_link_tag('styles') # => picks styles.css from the current theme or defaults
   #   stylesheet_link_tag('styles', :plugin => 'foo) # => picks styles.css from plugin's assets
   #
-  def stylesheet_link_tag(*sources)
-    options = sources.last.is_a?(Hash) ? sources.pop : {}
-    plugin = options.delete(:plugin)
-    sources = sources.map do |source|
-      if plugin
-        "/plugin_assets/#{plugin}/stylesheets/#{source}"
-      elsif current_theme && current_theme.stylesheets.include?(source)
-        current_theme.stylesheet_path(source)
-      else
-        source
-      end
-    end
-    super *sources, options
-  end
+  #
+  ## TODO plugins
+#  def stylesheet_link_tag(*sources)
+#    options = sources.last.is_a?(Hash) ? sources.pop : {}
+#    plugin = options.delete(:plugin)
+#    sources = sources.map do |source|
+#      if plugin
+#        "/plugin_assets/#{plugin}/stylesheets/#{source}"
+#      elsif current_theme && current_theme.stylesheets.include?(source)
+#        current_theme.stylesheet_path(source)
+#      else
+#        source
+#      end
+#    end
+#    super *sources, options
+#  end
 
   # Overrides Rails' image_tag with themes and plugins support.
   # Examples:
@@ -1345,19 +1347,20 @@ module ApplicationHelper
   #   javascript_include_tag('scripts') # => picks scripts.js from defaults
   #   javascript_include_tag('scripts', :plugin => 'foo) # => picks scripts.js from plugin's assets
   #
-  def javascript_include_tag(*sources)
-    options = sources.last.is_a?(Hash) ? sources.pop : {}
-    if plugin = options.delete(:plugin)
-      sources = sources.map do |source|
-        if plugin
-          "/plugin_assets/#{plugin}/javascripts/#{source}"
-        else
-          source
-        end
-      end
-    end
-    super *sources, options
-  end
+  # TODO support plugins
+#  def javascript_include_tag(*sources)
+#    options = sources.last.is_a?(Hash) ? sources.pop : {}
+#    if plugin = options.delete(:plugin)
+#      sources = sources.map do |source|
+#        if plugin
+#          "/plugin_assets/#{plugin}/javascripts/#{source}"
+#        else
+#          source
+#        end
+#      end
+#    end
+#    super *sources, options
+#  end
 
   def sidebar_content?
     content_for?(:sidebar) || view_layouts_base_sidebar_hook_response.present?

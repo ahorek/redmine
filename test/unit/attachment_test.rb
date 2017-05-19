@@ -25,7 +25,7 @@ class AttachmentTest < ActiveSupport::TestCase
 
   # TODO: remove this with Rails 5 that supports after_commit callbacks
   # in transactional fixtures (https://github.com/rails/rails/pull/18458)
-  self.use_transactional_fixtures = false
+  self.use_transactional_tests = false
 
   def setup
     set_tmp_attachments_directory

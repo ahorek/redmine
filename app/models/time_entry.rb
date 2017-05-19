@@ -24,7 +24,7 @@ class TimeEntry < ActiveRecord::Base
   belongs_to :user
   belongs_to :activity, :class_name => 'TimeEntryActivity'
 
-  attr_protected :user_id, :tyear, :tmonth, :tweek
+  #attr_protected :user_id, :tyear, :tmonth, :tweek
 
   acts_as_customizable
   acts_as_event :title => Proc.new { |o|
@@ -103,7 +103,7 @@ class TimeEntry < ActiveRecord::Base
   def safe_attributes=(attrs, user=User.current)
     if attrs
       attrs = super(attrs)
-      if issue_id_changed? && issue
+      if saved_change_to_issue_id? && issue
         if issue.visible?(user) && user.allowed_to?(:log_time, issue.project)
           if attrs[:project_id].blank? && issue.project_id != project_id
             self.project_id = issue.project_id
@@ -125,7 +125,7 @@ class TimeEntry < ActiveRecord::Base
     errors.add :hours, :invalid if hours && (hours < 0 || hours >= 1000)
     errors.add :project_id, :invalid if project.nil?
     errors.add :issue_id, :invalid if (issue_id && !issue) || (issue && project!=issue.project) || @invalid_issue_id
-    errors.add :activity_id, :inclusion if activity_id_changed? && project && !project.activities.include?(activity)
+    errors.add :activity_id, :inclusion if saved_change_to_activity_id? && project && !project.activities.include?(activity)
   end
 
   def hours=(h)

@@ -82,7 +82,7 @@ module Redmine
       # If false is returned, render has already been called for display of the
       # password form.
       #
-      # if @user.mail_changed?
+      # if @user.saved_change_to_mail?
       #   require_sudo_mode :user or return
       # end
       #
