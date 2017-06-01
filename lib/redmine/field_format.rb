@@ -155,7 +155,7 @@ module Redmine
       def target_class
         nil
       end
- 
+
       def possible_custom_value_options(custom_value)
         possible_values_options(custom_value.custom_field, custom_value.customized)
       end
@@ -621,7 +621,7 @@ module Redmine
           value ||= label
           checked = (custom_value.value.is_a?(Array) && custom_value.value.include?(value)) || custom_value.value.to_s == value
           tag = view.send(tag_method, tag_name, value, checked, :id => nil)
-          s << view.content_tag('label', tag + ' ' + label) 
+          s << view.content_tag('label', tag + ' ' + label)
         end
         if custom_value.custom_field.multiple?
           s << view.hidden_field_tag(tag_name, '', :id => nil)
@@ -726,7 +726,7 @@ module Redmine
       def reset_target_class
         @target_class = nil
       end
- 
+
       def possible_custom_value_options(custom_value)
         options = possible_values_options(custom_value.custom_field, custom_value.customized)
         missing = [custom_value.value_was].flatten.reject(&:blank?) - options.map(&:last)
@@ -772,7 +772,7 @@ module Redmine
     class EnumerationFormat < RecordList
       add 'enumeration'
       self.form_partial = 'custom_fields/formats/enumeration'
- 
+
       def label
         "label_field_format_enumeration"
       end
@@ -972,7 +972,7 @@ module Redmine
       end
 
       def after_save_custom_value(custom_field, custom_value)
-        if custom_value.value_changed?
+        if custom_value.saved_change_to_value?
           if custom_value.value.present?
             attachment = Attachment.where(:id => custom_value.value.to_s).first
             if attachment

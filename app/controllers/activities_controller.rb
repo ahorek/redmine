@@ -23,24 +23,24 @@ class ActivitiesController < ApplicationController
   def index
     @days = Setting.activity_days_default.to_i
 
-    if params[:from]
-      begin; @date_to = params[:from].to_date + 1; rescue; end
+    if params.permit(:from)[:from]
+      begin; @date_to = params.permit(:from)[:from].to_date + 1; rescue; end
     end
 
     @date_to ||= User.current.today + 1
     @date_from = @date_to - @days
-    @with_subprojects = params[:with_subprojects].nil? ? Setting.display_subprojects_issues? : (params[:with_subprojects] == '1')
-    if params[:user_id].present?
-      @author = User.active.find(params[:user_id])
+    @with_subprojects = params.permit(:with_subprojects)[:with_subprojects].nil? ? Setting.display_subprojects_issues? : (params.permit(:with_subprojects)[:with_subprojects] == '1')
+    if params.permit(:user_id).present?
+      @author = User.active.find(params.permit(:user_id)[:user_id])
     end
 
     @activity = Redmine::Activity::Fetcher.new(User.current, :project => @project,
                                                              :with_subprojects => @with_subprojects,
                                                              :author => @author)
     pref = User.current.pref
-    @activity.scope_select {|t| !params["show_#{t}"].nil?}
+    @activity.scope_select {|t| !params.permit("show_#{t}").nil?}
     if @activity.scope.present?
-      if params[:submit].present?
+      if params.permit(:submit)[:submit].present?
         pref.activity_scope = @activity.scope
         pref.save
       end
@@ -81,8 +81,8 @@ class ActivitiesController < ApplicationController
 
   # TODO: refactor, duplicated in projects_controller
   def find_optional_project
-    return true unless params[:id]
-    @project = Project.find(params[:id])
+    return true unless params.permit(:id)[:id]
+    @project = Project.find(params.permit(:id)[:id])
     authorize
   rescue ActiveRecord::RecordNotFound
     render_404

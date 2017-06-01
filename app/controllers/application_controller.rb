@@ -103,9 +103,9 @@ class ApplicationController < ActionController::Base
         user = (User.active.find(session[:user_id]) rescue nil)
       elsif autologin_user = try_to_autologin
         user = autologin_user
-      elsif params[:format] == 'atom' && params[:key] && request.get? && accept_rss_auth?
+      elsif params.permit(:format)[:format] == 'atom' && params.permit(:key)[:key] && request.get? && accept_rss_auth?
         # RSS key authentication does not start a session
-        user = User.find_by_rss_key(params[:key])
+        user = User.find_by_rss_key(params.permit(:key)[:key])
       end
     end
     if user.nil? && Setting.rest_api_enabled? && accept_api_auth?
@@ -216,7 +216,7 @@ class ApplicationController < ActionController::Base
       if request.get?
         url = request.original_url
       else
-        url = url_for(:controller => params[:controller], :action => params[:action], :id => params[:id], :project_id => params[:project_id])
+        url = url_for(:controller => params.permit(:controller)[:controller], :action => params.permit(:action)[:action], :id => params.permit(:id)[:id], :project_id => params.permit(:project_id)[:project_id])
       end
       respond_to do |format|
         format.html {
@@ -253,7 +253,7 @@ class ApplicationController < ActionController::Base
   end
 
   # Authorize the user for the requested action
-  def authorize(ctrl = params[:controller], action = params[:action], global = false)
+  def authorize(ctrl = params.permit(:controller)[:controller], action = params.permit(:action)[:action], global = false)
     allowed = User.current.allowed_to?({:controller => ctrl, :action => action}, @project || @projects, :global => global)
     if allowed
       true
@@ -267,20 +267,20 @@ class ApplicationController < ActionController::Base
   end
 
   # Authorize the user for the requested action outside a project
-  def authorize_global(ctrl = params[:controller], action = params[:action], global = true)
+  def authorize_global(ctrl = params.permit(:controller)[:controller], action = params.permit(:action)[:action], global = true)
     authorize(ctrl, action, global)
   end
 
   # Find project of id params[:id]
   def find_project
-    @project = Project.find(params[:id])
+    @project = Project.find(params.permit(:id)[:id])
   rescue ActiveRecord::RecordNotFound
     render_404
   end
 
   # Find project of id params[:project_id]
   def find_project_by_project_id
-    @project = Project.find(params[:project_id])
+    @project = Project.find(params.permit(:project_id)[:project_id])
   rescue ActiveRecord::RecordNotFound
     render_404
   end
@@ -288,8 +288,8 @@ class ApplicationController < ActionController::Base
   # Find a project based on params[:project_id]
   # TODO: some subclasses override this, see about merging their logic
   def find_optional_project
-    @project = Project.find(params[:project_id]) unless params[:project_id].blank?
-    allowed = User.current.allowed_to?({:controller => params[:controller], :action => params[:action]}, @project, :global => true)
+    @project = Project.find(params.permit(:project_id)[:project_id]) unless params.permit(:project_id)[:project_id].blank?
+    allowed = User.current.allowed_to?({:controller => params.permit(:controller)[:controller], :action => params.permit(:action)[:action]}, @project, :global => true)
     allowed ? true : deny_access
   rescue ActiveRecord::RecordNotFound
     render_404
@@ -305,7 +305,7 @@ class ApplicationController < ActionController::Base
   def find_model_object
     model = self.class.model_object
     if model
-      @object = model.find(params[:id])
+      @object = model.find(params.permit(:id)[:id])
       self.instance_variable_set('@' + controller_name.singularize, @object) if @object
     end
   rescue ActiveRecord::RecordNotFound
@@ -321,7 +321,7 @@ class ApplicationController < ActionController::Base
   def find_issue
     # Issue.visible.find(...) can not be used to redirect user to the login form
     # if the issue actually exists but requires authentication
-    @issue = Issue.find(params[:id])
+    @issue = Issue.find(params.permit(:id)[:id])
     raise Unauthorized unless @issue.visible?
     @project = @issue.project
   rescue ActiveRecord::RecordNotFound
@@ -332,7 +332,7 @@ class ApplicationController < ActionController::Base
   # Raises a Unauthorized exception if one of the issues is not visible
   def find_issues
     @issues = Issue.
-      where(:id => (params[:id] || params[:ids])).
+      where(:id => (params.permit(:id)[:id] || params.permit(:ids)[:ids])).
       preload(:project, :status, :tracker, :priority, :author, :assigned_to, :relations_to, {:custom_values => :custom_field}).
       to_a
     raise ActiveRecord::RecordNotFound if @issues.empty?
@@ -344,7 +344,7 @@ class ApplicationController < ActionController::Base
   end
 
   def find_attachments
-    if (attachments = params[:attachments]).present?
+    if (attachments = params.require(:attachments).permit(:token, :filename)).present?
       att = attachments.values.collect do |attachment|
         Attachment.find_by_token( attachment[:token] ) if attachment[:token].present?
       end
@@ -386,7 +386,7 @@ class ApplicationController < ActionController::Base
   end
 
   def back_url
-    url = params[:back_url]
+    url = params.permit(:back_url)[:back_url]
     if url.nil? && referer = request.env['HTTP_REFERER']
       url = CGI.unescape(referer.to_s)
     end
@@ -394,7 +394,7 @@ class ApplicationController < ActionController::Base
   end
 
   def redirect_back_or_default(default, options={})
-    back_url = params[:back_url].to_s
+    back_url = params.permit(:back_url)[:back_url].to_s
     if back_url.present? && valid_url = validate_back_url(back_url)
       redirect_to(valid_url)
       return
@@ -556,8 +556,8 @@ class ApplicationController < ActionController::Base
   # on the paginated list
   def per_page_option
     per_page = nil
-    if params[:per_page] && Setting.per_page_options_array.include?(params[:per_page].to_s.to_i)
-      per_page = params[:per_page].to_s.to_i
+    if params.permit(:per_page)[:per_page] && Setting.per_page_options_array.include?(params.permit(:per_page)[:per_page].to_s.to_i)
+      per_page = params.permit(:per_page)[:per_page].to_s.to_i
       session[:per_page] = per_page
     elsif session[:per_page]
       per_page = session[:per_page]
@@ -618,13 +618,13 @@ class ApplicationController < ActionController::Base
   end
 
   def api_request?
-    %w(xml json).include? params[:format]
+    %w(xml json).include? params.permit(:format)[:format]
   end
 
   # Returns the API key present in the request
   def api_key_from_request
-    if params[:key].present?
-      params[:key].to_s
+    if params.permit(:key)[:key].present?
+      params.permit(:key)[:key].to_s
     elsif request.headers["X-Redmine-API-Key"].present?
       request.headers["X-Redmine-API-Key"].to_s
     end

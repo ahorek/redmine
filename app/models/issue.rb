@@ -879,7 +879,7 @@ class Issue < ActiveRecord::Base
 
   # Returns true if the issue was closed when loaded
   def was_closed?
-    status_before_last_save.present? && status_before_last_save.is_closed?
+    status_was.present? && status_was.is_closed?
   end
 
   # Return true if the issue is being reopened
@@ -972,7 +972,7 @@ class Issue < ActiveRecord::Base
         initial_status = default_status
       end
     else
-      initial_status = status_before_last_save
+      initial_status = status_was
     end
 
     initial_assigned_to_id = saved_change_to_assigned_to_id? ? assigned_to_id_before_last_save : assigned_to_id

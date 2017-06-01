@@ -125,7 +125,7 @@ class IssuesController < ApplicationController
       raise ::Unauthorized
     end
     call_hook(:controller_issues_new_before_save, { :params => params, :issue => @issue })
-    @issue.save_attachments(params[:attachments] || (params[:issue] && params[:issue][:uploads]))
+    @issue.save_attachments(params[:attachments] || (update_params && update_params[:uploads]))
     if @issue.save
       call_hook(:controller_issues_new_after_save, { :params => params, :issue => @issue})
       respond_to do |format|
@@ -162,7 +162,7 @@ class IssuesController < ApplicationController
 
   def update
     return unless update_issue_from_params
-    @issue.save_attachments(params[:attachments] || (params[:issue] && params[:issue][:uploads]))
+    @issue.save_attachments(params[:attachments] || (update_params && update_params[:uploads]))
     saved = false
     begin
       saved = save_issue_with_child_records
@@ -219,8 +219,8 @@ class IssuesController < ApplicationController
     end
 
     @allowed_projects = Issue.allowed_target_projects
-    if params[:issue]
-      @target_project = @allowed_projects.detect {|p| p.id.to_s == params[:issue][:project_id].to_s}
+    if update_params
+      @target_project = @allowed_projects.detect {|p| p.id.to_s == update_params[:project_id].to_s}
       if @target_project
         target_projects = [@target_project]
         edited_issues.each {|issue| issue.project = @target_project}
@@ -229,8 +229,8 @@ class IssuesController < ApplicationController
     target_projects ||= @projects
 
     @trackers = target_projects.map {|p| Issue.allowed_target_trackers(p) }.reduce(:&)
-    if params[:issue]
-      @target_tracker = @trackers.detect {|t| t.id.to_s == params[:issue][:tracker_id].to_s}
+    if update_params
+      @target_tracker = @trackers.detect {|t| t.id.to_s == update_params[:tracker_id].to_s}
       if @target_tracker
         edited_issues.each {|issue| issue.tracker = @target_tracker}
       end
@@ -242,8 +242,8 @@ class IssuesController < ApplicationController
     else
       @available_statuses = edited_issues.map(&:new_statuses_allowed_to).reduce(:&)
     end
-    if params[:issue]
-      @target_status = @available_statuses.detect {|t| t.id.to_s == params[:issue][:status_id].to_s}
+    if update_params
+      @target_status = @available_statuses.detect {|t| t.id.to_s == update_params[:status_id].to_s}
       if @target_status
         edited_issues.each {|issue| issue.status = @target_status}
       end
@@ -270,7 +270,7 @@ class IssuesController < ApplicationController
 
     @safe_attributes = edited_issues.map(&:safe_attribute_names).reduce(:&)
 
-    @issue_params = params[:issue] || {}
+    @issue_params = update_params || {}
     @issue_params[:custom_field_values] ||= {}
   end
 
@@ -278,7 +278,7 @@ class IssuesController < ApplicationController
     @issues.sort!
     @copy = params[:copy].present?
 
-    attributes = parse_params_for_bulk_update(params[:issue])
+    attributes = parse_params_for_bulk_update(update_params)
     copy_subtasks = (params[:copy_subtasks] == '1')
     copy_attachments = (params[:copy_attachments] == '1')
     copy_watchers = (params[:copy_watchers] == '1')
@@ -457,7 +457,7 @@ class IssuesController < ApplicationController
 
     @issue.init_journal(User.current)
 
-    issue_attributes = params[:issue]
+    issue_attributes = update_params
     if issue_attributes && params[:conflict_resolution]
       case params[:conflict_resolution]
       when 'overwrite'
@@ -474,6 +474,10 @@ class IssuesController < ApplicationController
     @priorities = IssuePriority.active
     @allowed_statuses = @issue.new_statuses_allowed_to(User.current)
     true
+  end
+
+  def update_params
+    params.require(@issue.class.name.underscore).permit(@issue.safe_attribute_names + [{'uploads' => ['filename', 'token']}])
   end
 
   # Used by #new and #create to build a new issue from the params
@@ -505,7 +509,7 @@ class IssuesController < ApplicationController
     @issue.author ||= User.current
     @issue.start_date ||= User.current.today if Setting.default_issue_start_date_to_creation_date?
 
-    attrs = (params[:issue] || {}).deep_dup
+    attrs = (update_params || {}).deep_dup
     if action_name == 'new' && params[:was_default_status] == attrs[:status_id]
       attrs.delete(:status_id)
     end

@@ -41,6 +41,10 @@ group :assets do
   gem 'sass-rails'
 end
 
+group :js_runtime do
+  gem 'mini_racer', :require => false, :platforms => :mri
+end
+
 platforms :mri, :mingw, :x64_mingw do
   # Optional gem for exporting the gantt to a PNG file, not supported with jruby
   group :rmagick do
@@ -97,7 +101,7 @@ group :test do
   gem "simplecov", "~> 0.9.1", :require => false
   # For running UI tests
   gem "capybara"
-  gem "selenium-webdriver", "~> 2.53.4"
+  gem "selenium-webdriver"
 end
 
 local_gemfile = File.join(File.dirname(__FILE__), "Gemfile.local")

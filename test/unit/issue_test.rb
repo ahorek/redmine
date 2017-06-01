@@ -2861,28 +2861,28 @@ class IssueTest < ActiveSupport::TestCase
 
   def test_status_was_should_return_nil_for_new_issue
     issue = Issue.new
-    assert_nil issue.status_before_last_save
+    assert_nil issue.status_was
   end
 
   def test_status_was_should_return_status_before_change
     issue = Issue.find(1)
     issue.status = IssueStatus.find(2)
-    assert_equal IssueStatus.find(1), issue.status_before_last_save
+    assert_equal IssueStatus.find(1), issue.status_was
   end
 
   def test_status_was_should_return_status_before_change_with_status_id
     issue = Issue.find(1)
     assert_equal IssueStatus.find(1), issue.status
     issue.status_id = 2
-    assert_equal IssueStatus.find(1), issue.status_before_last_save
+    assert_equal IssueStatus.find(1), issue.status_was
   end
 
   def test_status_was_should_be_reset_on_save
     issue = Issue.find(1)
     issue.status = IssueStatus.find(2)
-    assert_equal IssueStatus.find(1), issue.status_before_last_save
+    assert_equal IssueStatus.find(1), issue.status_was
     assert issue.save!
-    assert_equal IssueStatus.find(2), issue.status_before_last_save
+    assert_equal IssueStatus.find(2), issue.status_was
   end
 
   def test_closing_should_return_true_when_closing_an_issue
