@@ -729,7 +729,7 @@ module Redmine
 
       def possible_custom_value_options(custom_value)
         options = possible_values_options(custom_value.custom_field, custom_value.customized)
-        missing = [custom_value.value_was].flatten.reject(&:blank?) - options.map(&:last)
+        missing = [custom_value.value_before_last_save].flatten.reject(&:blank?) - options.map(&:last)
         if missing.any?
           options += target_class.where(:id => missing.map(&:to_i)).map {|o| [o.to_s, o.id.to_s]}
         end
@@ -980,8 +980,8 @@ module Redmine
               attachment.save!
             end
           end
-          if custom_value.value_was.present?
-            attachment = Attachment.where(:id => custom_value.value_was.to_s).first
+          if custom_value.value_before_last_save.present?
+            attachment = Attachment.where(:id => custom_value.value_before_last_save.to_s).first
             if attachment
               attachment.destroy
             end
