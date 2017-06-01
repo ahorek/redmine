@@ -339,7 +339,7 @@ module Redmine
       assert_nil session[:user_id]
       assert_response :success
 
-      post "/login", :username => login, :password => password
+      post "/login", :params => {:username => login, :password => password}
       assert_equal login, User.find(session[:user_id]).login
     end
 
