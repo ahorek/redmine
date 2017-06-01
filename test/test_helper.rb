@@ -34,8 +34,12 @@ include ObjectHelpers
 
 require 'net/ldap'
 require 'mocha/setup'
+require 'fileutils'
 
 Redmine::SudoMode.disable!
+
+$redmine_tmp_attachments_directory = "#{Rails.root}/tmp/test/attachments"
+FileUtils.mkdir_p $redmine_tmp_attachments_directory
 
 class ActionView::TestCase
   helper :application
@@ -68,11 +72,7 @@ class ActiveSupport::TestCase
 
   # Use a temporary directory for attachment related tests
   def set_tmp_attachments_directory
-    Dir.mkdir "#{Rails.root}/tmp/test" unless File.directory?("#{Rails.root}/tmp/test")
-    unless File.directory?("#{Rails.root}/tmp/test/attachments")
-      Dir.mkdir "#{Rails.root}/tmp/test/attachments"
-    end
-    Attachment.storage_path = "#{Rails.root}/tmp/test/attachments"
+    Attachment.storage_path = $redmine_tmp_attachments_directory
   end
 
   def set_fixtures_attachments_directory
@@ -320,23 +320,16 @@ module Redmine
       assert_equal expected_filters.size, filter_init.scan("addFilter").size, "filters counts don't match"
     end
 
-    def process(action, method: "GET", params: {}, session: nil, body: nil, flash: {}, format: nil, xhr: false, as: nil)
-      if params.key?(:session)
-        raise ArgumentError if session.present?
-        super action, method, params.except(:session), session, body, flash, format, xhr, as
+    def process(action, http_method = 'GET', *args)
+      parameters, session, flash = *args
+      if args.size == 1 && parameters[:xhr] == true
+        xhr http_method.downcase.to_sym, action, parameters.except(:xhr)
+      elsif parameters && (parameters.key?(:params) || parameters.key?(:session) || parameters.key?(:flash))
+        super action, http_method, parameters[:params], parameters[:session], parameters[:flash]
       else
         super
       end
     end
-
-#    def process(method, path, parameters={}, session={}, flash={})
-#      if parameters.key?(:params) || parameters.key?(:session)
-#        raise ArgumentError if session.present?
-#        super method, path, parameters[:params], parameters[:session], parameters.except(:params, :session)
-#      else
-#        super
-#      end
-#    end
   end
 
   class IntegrationTest < ActionDispatch::IntegrationTest
@@ -348,6 +341,17 @@ module Redmine
 
       post "/login", :username => login, :password => password
       assert_equal login, User.find(session[:user_id]).login
+    end
+
+    %w(get post patch put delete head).each do |http_method|
+      class_eval %Q"
+        def #{http_method}(path, parameters = nil, headers_or_env = nil)
+          if headers_or_env.nil? && parameters.is_a?(Hash) && (parameters.key?(:params) || parameters.key?(:headers))
+            super path, parameters[:params], parameters[:headers]
+          else
+            super
+          end
+        end"
     end
 
     def credentials(user, password=nil)
