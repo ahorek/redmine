@@ -344,7 +344,7 @@ class ApplicationController < ActionController::Base
   end
 
   def find_attachments
-    if (attachments = params.require(:attachments).permit(:token, :filename)).present?
+    if params.has_key?(:attachments) && (attachments = params.require(:attachments).permit(:token, :filename)).present?
       att = attachments.values.collect do |attachment|
         Attachment.find_by_token( attachment[:token] ) if attachment[:token].present?
       end
@@ -454,9 +454,9 @@ class ApplicationController < ActionController::Base
 
   # Redirects to the request referer if present, redirects to args or call block otherwise.
   def redirect_to_referer_or(*args, &block)
-    redirect_to :back
-  rescue ::ActionController::RedirectBackError
-    if args.any?
+    if request.env["HTTP_REFERER"].present?
+      redirect_back
+    elsif args.any?
       redirect_to *args
     elsif block_given?
       block.call
